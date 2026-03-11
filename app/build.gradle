@@ -1,13 +1,7 @@
-import java.util.Properties
-
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
 }
-
-def localProps = new Properties()
-def localPropsFile = rootProject.file('local.properties')
-if (localPropsFile.exists()) localProps.load(localPropsFile.newDataInputStream())
 
 android {
     namespace 'com.example.studytimelapse'
@@ -21,9 +15,6 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        manifestPlaceholders = [
-            mapsApiKey: localProps.getProperty('MAPS_API_KEY', '')
-        ]
     }
 
     buildTypes {
@@ -70,8 +61,8 @@ dependencies {
     // Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
-    // Google Maps
-    implementation 'com.google.android.gms:play-services-maps:18.2.0'
+    // OpenStreetMap (osmdroid) - no API key required
+    implementation 'org.osmdroid:osmdroid-android:6.1.18'
 
     // Testing
     testImplementation 'junit:junit:4.13.2'

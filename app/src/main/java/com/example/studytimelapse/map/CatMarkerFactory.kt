@@ -4,11 +4,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import com.google.android.gms.maps.model.BitmapDescriptor
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 
 /**
- * Draws a 16×16 pixel-art cat and returns it as a Google Maps [BitmapDescriptor].
+ * Draws a 16×16 pixel-art cat and returns it as a [BitmapDrawable] for osmdroid.
  *
  * Color key:
  *   0 = transparent
@@ -48,9 +48,9 @@ object CatMarkerFactory {
     )
 
     /**
-     * Returns a [BitmapDescriptor] of the pixel-art cat scaled to [sizeDp] × [sizeDp] dp.
+     * Returns a [Drawable] of the pixel-art cat scaled to [sizeDp] × [sizeDp] dp.
      */
-    fun create(context: Context, sizeDp: Int = 48): BitmapDescriptor {
+    fun create(context: Context, sizeDp: Int = 48): Drawable {
         val density = context.resources.displayMetrics.density
         val cellPx = (sizeDp * density / PIXELS.size).coerceAtLeast(1f)
         val bitmapSize = (PIXELS.size * cellPx).toInt()
@@ -73,6 +73,6 @@ object CatMarkerFactory {
             }
         }
 
-        return BitmapDescriptorFactory.fromBitmap(bitmap)
+        return BitmapDrawable(context.resources, bitmap)
     }
 }
