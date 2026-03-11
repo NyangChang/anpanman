@@ -39,6 +39,8 @@ import java.io.File
  * @param motionDetector     Optional [MotionDetector]; pass null to skip analysis.
  * @param onMotionDetected   Callback with the latest [MotionResult] (called on the
  *                           encoding thread; post to main thread if updating UI).
+ * @param onFinished         Called on the encoding thread when the MP4 has been fully
+ *                           written.  Arguments are the output [File] and total frame count.
  * @param onError            Callback when a fatal error occurs.
  */
 class TimeLapseRecorder(
@@ -49,6 +51,7 @@ class TimeLapseRecorder(
     outputFps: Int = 30,
     private val motionDetector: MotionDetector? = null,
     private val onMotionDetected: ((MotionResult) -> Unit)? = null,
+    private val onFinished: ((File, Long) -> Unit)? = null,
     private val onError: ((Exception) -> Unit)? = null,
 ) {
 
@@ -120,10 +123,12 @@ class TimeLapseRecorder(
         if (!recording) return
         recording = false
 
+        val finalFrameCount = frameCount
         encoderScope.launch {
             try {
                 encoder.finish()
-                Log.d(tag, "Recording stopped. Frames=$frameCount, file=${outputFile.absolutePath}")
+                Log.d(tag, "Recording stopped. Frames=$finalFrameCount, file=${outputFile.absolutePath}")
+                onFinished?.invoke(outputFile, finalFrameCount)
             } catch (e: Exception) {
                 Log.e(tag, "Error finishing encoder", e)
                 onError?.invoke(e)

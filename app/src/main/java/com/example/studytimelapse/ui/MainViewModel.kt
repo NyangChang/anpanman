@@ -80,6 +80,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             },
+            onFinished = { file, frames ->
+                FileUtil.addToMediaStore(getApplication(), file)
+                elapsedHandler.post {
+                    _recordingState.value = RecordingState.Saved(file, frames.toInt())
+                }
+                Log.d(tag, "Saved → ${file.absolutePath}, frames=$frames")
+            },
             onError = { e ->
                 Log.e(tag, "Recorder error", e)
                 elapsedHandler.post {
@@ -102,18 +109,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val totalFrames = capturedFrameCount.get()
         rec.stop()
         recorder = null
-
-        // Determine the output file path before handing off to the encoder finaliser
-        // (TimeLapseRecorder.stop() is async, so we use a short poll or trust it completes)
-        val context = getApplication<Application>()
-        val state = _recordingState.value
-        if (state is RecordingState.Recording) {
-            // We can retrieve the file from the recorder's outputFile via a callback.
-            // For simplicity we signal Idle and let the recorder's internal finish() post Saved.
-            _recordingState.value = RecordingState.Idle
-        }
-
-        Log.d(tag, "Recording stopped, frames=$totalFrames")
+        Log.d(tag, "Recording stopping, frames=$totalFrames")
     }
 
     /**
