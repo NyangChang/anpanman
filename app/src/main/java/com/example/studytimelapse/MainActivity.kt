@@ -1,6 +1,7 @@
 package com.example.studytimelapse
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -13,6 +14,7 @@ import androidx.core.content.ContextCompat
 import com.example.studytimelapse.camera.CameraController
 import com.example.studytimelapse.camera.toBitmapCompat
 import com.example.studytimelapse.databinding.ActivityMainBinding
+import com.example.studytimelapse.map.MapActivity
 import com.example.studytimelapse.ui.MainViewModel
 import com.example.studytimelapse.ui.RecordingState
 
@@ -55,6 +57,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.btnRecord.setOnClickListener { onRecordButtonClicked() }
+        binding.btnMap.setOnClickListener {
+            startActivity(Intent(this, MapActivity::class.java))
+        }
 
         viewModel.recordingState.observe(this) { state ->
             renderState(state)

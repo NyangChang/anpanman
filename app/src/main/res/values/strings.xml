@@ -15,6 +15,9 @@
     <!-- Toasts -->
     <string name="toast_saved">動画を保存しました:\n%1$s</string>
 
+    <!-- Map -->
+    <string name="btn_map">🐱 地図を見る</string>
+
     <!-- Permission -->
     <string name="permission_denied">カメラ権限が必要です</string>
 </resources>

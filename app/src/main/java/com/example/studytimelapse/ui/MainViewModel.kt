@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.studytimelapse.detection.PenMotionDetector
+import com.example.studytimelapse.map.CatRepository
 import com.example.studytimelapse.timelapse.TimeLapseRecorder
 import com.example.studytimelapse.util.FileUtil
 import java.util.concurrent.atomic.AtomicInteger
@@ -71,6 +72,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             outputFps = 30,              // plays back at 30 fps → ~15× speed-up
             motionDetector = PenMotionDetector(),
             onMotionDetected = { result ->
+                // Move the cat based on detected writing motion
+                CatRepository.onMotion(result.motionScore)
+
                 val current = _recordingState.value
                 if (current is RecordingState.Recording) {
                     // Post to main thread because LiveData observers run there
