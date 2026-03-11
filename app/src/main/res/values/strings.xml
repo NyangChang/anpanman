@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StudyTimeLapse</string>
+
+    <!-- Buttons -->
+    <string name="btn_start">● REC</string>
+    <string name="btn_stop">■ STOP</string>
+
+    <!-- Status messages -->
+    <string name="status_idle">カメラ準備完了 — RECで録画開始</string>
+    <string name="status_recording">録画中 %1$d秒 | フレーム %2$d 枚</string>
+    <string name="status_saved">保存完了: %1$s (%2$d フレーム)</string>
+    <string name="status_error">エラー: %1$s</string>
+
+    <!-- Toasts -->
+    <string name="toast_saved">動画を保存しました:\n%1$s</string>
+
+    <!-- Permission -->
+    <string name="permission_denied">カメラ権限が必要です</string>
+</resources>
