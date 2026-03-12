@@ -8,6 +8,7 @@ import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.util.Log
 import java.io.File
+import java.nio.ByteBuffer
 
 /**
  * Encodes a sequence of [Bitmap] frames into an H.264/MP4 file using
