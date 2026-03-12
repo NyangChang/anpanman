@@ -18,7 +18,11 @@ package com.example.studytimelapse.timelapse
  */
 class FrameSampler(val captureIntervalMs: Long = 500L) {
 
-    private var lastCapturedTimeMs: Long = Long.MIN_VALUE
+    // 0L means "never captured"; System.currentTimeMillis() >> captureIntervalMs,
+    // so the first shouldCapture() call after reset() always returns true without overflow.
+    // Long.MIN_VALUE must NOT be used here: currentTimeMs - Long.MIN_VALUE overflows
+    // to a large negative value, making the comparison always false.
+    private var lastCapturedTimeMs: Long = 0L
 
     /**
      * Returns true if the frame at [currentTimeMs] should be captured.
@@ -35,6 +39,6 @@ class FrameSampler(val captureIntervalMs: Long = 500L) {
 
     /** Reset so the very next call to [shouldCapture] returns true. */
     fun reset() {
-        lastCapturedTimeMs = Long.MIN_VALUE
+        lastCapturedTimeMs = 0L
     }
 }
