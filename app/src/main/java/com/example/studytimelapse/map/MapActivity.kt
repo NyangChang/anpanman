@@ -1,7 +1,7 @@
 package com.example.studytimelapse.map
 
 import android.os.Bundle
-import android.preference.PreferenceManager
+import androidx.preference.PreferenceManager
 import androidx.appcompat.app.AppCompatActivity
 import com.example.studytimelapse.databinding.ActivityMapBinding
 import org.osmdroid.config.Configuration
