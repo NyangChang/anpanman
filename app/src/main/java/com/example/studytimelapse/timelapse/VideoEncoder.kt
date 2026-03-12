@@ -56,8 +56,12 @@ class VideoEncoder(
         check(!started) { "VideoEncoder already started" }
 
         val format = MediaFormat.createVideoFormat(mimeType, width, height).apply {
+            // COLOR_FormatYUV420SemiPlanar (NV12) is the correct format for
+            // byte-buffer (getInputBuffer) mode on Android hardware encoders.
+            // COLOR_FormatYUV420Flexible is for the Image API (getInputImage) only;
+            // using it with getInputBuffer causes encoders to silently produce no output.
             setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
+                MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar)
             setInteger(MediaFormat.KEY_BIT_RATE, bitrateBps)
             setInteger(MediaFormat.KEY_FRAME_RATE, fps)
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
@@ -87,7 +91,7 @@ class VideoEncoder(
             bitmap
         }
 
-        val nv21 = bitmapToNv21(scaledBitmap)
+        val nv21 = bitmapToNv12(scaledBitmap)
         if (scaledBitmap !== bitmap) scaledBitmap.recycle()
 
         // Feed raw data to the codec input buffer
@@ -153,10 +157,15 @@ class VideoEncoder(
             val outputIndex = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
             when {
                 outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    check(trackIndex == -1) { "Format changed twice" }
-                    trackIndex = muxer.addTrack(codec.outputFormat)
-                    muxer.start()
-                    Log.d(tag, "Muxer started, trackIndex=$trackIndex")
+                    if (trackIndex == -1) {
+                        trackIndex = muxer.addTrack(codec.outputFormat)
+                        muxer.start()
+                        Log.d(tag, "Muxer started, trackIndex=$trackIndex")
+                    } else {
+                        // Some hardware encoders spuriously re-send format change;
+                        // safe to ignore after the track has been added.
+                        Log.w(tag, "INFO_OUTPUT_FORMAT_CHANGED received again, ignoring")
+                    }
                 }
 
                 outputIndex >= 0 -> {
@@ -193,20 +202,20 @@ class VideoEncoder(
     }
 
     /**
-     * Convert an ARGB [Bitmap] to a tightly-packed NV21 byte array.
+     * Convert an ARGB [Bitmap] to a tightly-packed NV12 byte array.
      *
-     * NV21 layout: Y plane (width×height bytes) followed by interleaved V/U
+     * NV12 layout: Y plane (width×height bytes) followed by interleaved U/V
      * chroma plane (width×height/2 bytes).  This matches
-     * [MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible] on most
-     * devices when using the software encoder path.
+     * [MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar] which is
+     * the standard byte-buffer format for Android hardware AVC encoders.
      */
-    private fun bitmapToNv21(bitmap: Bitmap): ByteArray {
+    private fun bitmapToNv12(bitmap: Bitmap): ByteArray {
         val w = bitmap.width
         val h = bitmap.height
         val argb = IntArray(w * h)
         bitmap.getPixels(argb, 0, w, 0, 0, w, h)
 
-        val nv21 = ByteArray(w * h * 3 / 2)
+        val nv12 = ByteArray(w * h * 3 / 2)
         var yIdx = 0
         var uvIdx = w * h
 
@@ -218,17 +227,18 @@ class VideoEncoder(
                 val b = (pixel and 0xFF)
 
                 val y = ((66 * r + 129 * g + 25 * b + 128) shr 8) + 16
-                nv21[yIdx++] = y.coerceIn(0, 255).toByte()
+                nv12[yIdx++] = y.coerceIn(0, 255).toByte()
 
                 if (row % 2 == 0 && col % 2 == 0) {
-                    val v = ((112 * r - 94 * g - 18 * b + 128) shr 8) + 128
+                    // NV12: U before V (opposite of NV21)
                     val u = ((-38 * r - 74 * g + 112 * b + 128) shr 8) + 128
-                    nv21[uvIdx++] = v.coerceIn(0, 255).toByte()
-                    nv21[uvIdx++] = u.coerceIn(0, 255).toByte()
+                    val v = ((112 * r - 94 * g - 18 * b + 128) shr 8) + 128
+                    nv12[uvIdx++] = u.coerceIn(0, 255).toByte()
+                    nv12[uvIdx++] = v.coerceIn(0, 255).toByte()
                 }
             }
         }
 
-        return nv21
+        return nv12
     }
 }
