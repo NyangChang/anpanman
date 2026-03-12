@@ -63,6 +63,7 @@ class TimeLapseRecorder(
     private val targetOutputDurationSec: Int = 60,
     private val motionDetector: MotionDetector? = null,
     private val onMotionDetected: ((MotionResult) -> Unit)? = null,
+    private val onFrameCaptured: (() -> Unit)? = null,
     private val onFinished: ((File, Long) -> Unit)? = null,
     private val onError: ((Exception) -> Unit)? = null,
 ) {
@@ -161,14 +162,20 @@ class TimeLapseRecorder(
             } finally {
                 previousBitmap?.recycle()
                 previousBitmap = null
+                // Cancel the scope here, after all encoding work is done, so that
+                // release() cannot race with this coroutine by cancelling too early.
+                encoderScope.cancel()
             }
         }
     }
 
     /** Release resources regardless of recording state. */
     fun release() {
+        // stop() launches a coroutine on encoderScope to flush and close the encoder;
+        // do NOT cancel the scope here or that coroutine will be aborted before the
+        // file is finalised. The scope is cancelled inside the stop coroutine's finally
+        // block after all work is complete.
         stop()
-        encoderScope.cancel()
     }
 
     // -------------------------------------------------------------------------
@@ -190,6 +197,7 @@ class TimeLapseRecorder(
         val presentationTimeUs = frameCount * frameDurationUs
         encoder.encodeFrame(bitmap, presentationTimeUs)
         frameCount++
+        onFrameCaptured?.invoke()
     }
 
     /**

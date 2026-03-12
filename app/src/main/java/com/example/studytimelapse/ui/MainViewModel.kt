@@ -84,6 +84,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             },
+            onFrameCaptured = {
+                // Called on the encoding thread each time a timelapse frame is actually encoded
+                val newCount = capturedFrameCount.incrementAndGet()
+                elapsedHandler.post {
+                    val latest = _recordingState.value
+                    if (latest is RecordingState.Recording) {
+                        _recordingState.value = latest.copy(frameCount = newCount)
+                    }
+                }
+            },
             onFinished = { file, frames ->
                 FileUtil.addToMediaStore(getApplication(), file)
                 elapsedHandler.post {
@@ -122,18 +132,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun onCameraFrame(bitmap: Bitmap, timestampMs: Long) {
         recorder?.onFrame(bitmap, timestampMs)
-
-        val current = _recordingState.value
-        if (current is RecordingState.Recording) {
-            val newCount = capturedFrameCount.incrementAndGet()
-            // Update frame count on main thread
-            elapsedHandler.post {
-                val latest = _recordingState.value
-                if (latest is RecordingState.Recording) {
-                    _recordingState.value = latest.copy(frameCount = newCount)
-                }
-            }
-        }
     }
 
     // -------------------------------------------------------------------------
