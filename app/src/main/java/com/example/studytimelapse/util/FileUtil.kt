@@ -1,10 +1,9 @@
 package com.example.studytimelapse.util
 
-import android.content.ContentValues
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.Environment
-import android.provider.MediaStore
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -36,24 +35,17 @@ object FileUtil {
     }
 
     /**
-     * Registers a saved video file with the MediaStore so it appears in the
-     * system gallery immediately.  Required on API 29+; harmless on older versions.
+     * Notifies the media scanner about a saved video file so it appears in
+     * the system gallery.  Uses [MediaScannerConnection] which correctly
+     * handles both app-specific and public external storage paths on all
+     * supported API levels.
      */
     fun addToMediaStore(context: Context, file: File) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-
-        val values = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
-            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH,
-                "${Environment.DIRECTORY_MOVIES}/$TIMELAPSE_DIR")
-            put(MediaStore.Video.Media.IS_PENDING, 0)
-        }
-
-        try {
-            context.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        MediaScannerConnection.scanFile(
+            context,
+            arrayOf(file.absolutePath),
+            arrayOf("video/mp4"),
+            null,
+        )
     }
 }
