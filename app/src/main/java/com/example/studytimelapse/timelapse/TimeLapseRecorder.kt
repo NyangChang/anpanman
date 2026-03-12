@@ -60,9 +60,9 @@ class TimeLapseRecorder(
     private val sampler = FrameSampler(captureIntervalMs)
     private val encoder = VideoEncoder(outputFile, frameWidth, frameHeight, fps = outputFps)
 
-    /** Dedicated single-thread scope for all encoding work. */
+    /** Single-threaded scope for all encoding work (VideoEncoder is not thread-safe). */
     private val encoderScope = CoroutineScope(
-        Dispatchers.IO + SupervisorJob()
+        Dispatchers.IO.limitedParallelism(1) + SupervisorJob()
     )
 
     private var recording = false

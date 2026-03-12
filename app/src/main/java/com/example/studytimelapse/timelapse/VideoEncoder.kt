@@ -111,17 +111,26 @@ class VideoEncoder(
     fun finish() {
         if (!started) return
 
-        // Signal EOS via an empty input buffer
-        val inputIndex = codec.dequeueInputBuffer(10_000L)
-        if (inputIndex >= 0) {
-            codec.queueInputBuffer(inputIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+        // Signal EOS – retry until a buffer slot is available (avoid dropping EOS)
+        var eosSent = false
+        for (attempt in 0 until 20) {
+            val inputIndex = codec.dequeueInputBuffer(10_000L)
+            if (inputIndex >= 0) {
+                codec.queueInputBuffer(inputIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                eosSent = true
+                break
+            }
         }
+        if (!eosSent) Log.w(tag, "Could not send EOS; file may be truncated")
 
         drainEncoder(endOfStream = true)
 
         codec.stop()
         codec.release()
-        muxer.stop()
+        // Only stop/release muxer if it was actually started
+        if (trackIndex >= 0) {
+            muxer.stop()
+        }
         muxer.release()
         started = false
         Log.d(tag, "Encoder finished → ${outputFile.absolutePath}")
@@ -137,6 +146,8 @@ class VideoEncoder(
     private fun drainEncoder(endOfStream: Boolean) {
         val bufferInfo = MediaCodec.BufferInfo()
         var sawEos = false
+        var timeoutRetries = 0
+        val maxTimeoutRetries = if (endOfStream) 50 else 0
 
         while (!sawEos) {
             val outputIndex = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
@@ -149,6 +160,7 @@ class VideoEncoder(
                 }
 
                 outputIndex >= 0 -> {
+                    timeoutRetries = 0
                     val outputBuffer: ByteBuffer = codec.getOutputBuffer(outputIndex)!!
 
                     if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
@@ -171,6 +183,10 @@ class VideoEncoder(
                 else -> {
                     // INFO_TRY_AGAIN_LATER or other transient status
                     if (!endOfStream) break
+                    if (++timeoutRetries > maxTimeoutRetries) {
+                        Log.w(tag, "Drain timed out waiting for EOS")
+                        break
+                    }
                 }
             }
         }
