@@ -6,11 +6,16 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
+import androidx.camera.core.ZoomState
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.Observer
 import com.example.studytimelapse.camera.CameraController
 import com.example.studytimelapse.camera.toBitmapCompat
 import com.example.studytimelapse.databinding.ActivityMainBinding
@@ -23,6 +28,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
     private var cameraController: CameraController? = null
+
+    // Zoom state observation (re-subscribed each time the camera is bound)
+    private var zoomStateLiveData: LiveData<ZoomState>? = null
+    private val zoomObserver = Observer<ZoomState> { state ->
+        binding.tvZoom.text = getString(R.string.zoom_label, state.zoomRatio)
+    }
 
     // -------------------------------------------------------------------------
     // Permission launcher
@@ -60,6 +71,16 @@ class MainActivity : AppCompatActivity() {
         binding.btnMap.setOnClickListener {
             startActivity(Intent(this, MapActivity::class.java))
         }
+        binding.btnFlipCamera.setOnClickListener { flipCamera() }
+        binding.btnZoomOut.setOnClickListener { adjustZoom(-10) }
+        binding.btnZoomIn.setOnClickListener { adjustZoom(10) }
+        binding.seekZoom.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                if (fromUser) cameraController?.setLinearZoom(progress / 100f)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+        })
 
         viewModel.recordingState.observe(this) { state ->
             renderState(state)
@@ -70,6 +91,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        zoomStateLiveData?.removeObserver(zoomObserver)
         cameraController?.stop()
     }
 
@@ -107,8 +129,31 @@ class MainActivity : AppCompatActivity() {
                     proxy.close()
                 }
             },
+            onCameraReady = { camera -> observeZoomState(camera) },
         )
         cameraController!!.start()
+    }
+
+    private fun observeZoomState(camera: Camera) {
+        zoomStateLiveData?.removeObserver(zoomObserver)
+        val liveData = camera.cameraInfo.zoomState
+        liveData.observe(this, zoomObserver)
+        zoomStateLiveData = liveData
+    }
+
+    // -------------------------------------------------------------------------
+    // Camera controls
+    // -------------------------------------------------------------------------
+
+    private fun flipCamera() {
+        binding.seekZoom.progress = 0
+        cameraController?.switchCamera()
+    }
+
+    private fun adjustZoom(delta: Int) {
+        val newProgress = (binding.seekZoom.progress + delta).coerceIn(0, 100)
+        binding.seekZoom.progress = newProgress
+        cameraController?.setLinearZoom(newProgress / 100f)
     }
 
     // -------------------------------------------------------------------------
@@ -143,7 +188,6 @@ class MainActivity : AppCompatActivity() {
                     state.elapsedSeconds,
                     state.frameCount,
                 )
-                // Future: display state.motionScore on a progress bar or map character
             }
 
             is RecordingState.Saved -> {

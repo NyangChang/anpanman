@@ -19,6 +19,76 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:scaleType="fillCenter" />
 
+    <!-- Front/Back camera flip button (top-right) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnFlipCamera"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="12dp"
+        android:text="@string/btn_flip_camera"
+        android:textColor="@color/white"
+        app:strokeColor="@color/white"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Zoom controls row (just above bottom panel) -->
+    <LinearLayout
+        android:id="@+id/zoomRow"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="4dp"
+        android:background="@color/overlay"
+        app:layout_constraintBottom_toTopOf="@id/bottomPanel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnZoomOut"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="−"
+            android:textColor="@color/white"
+            android:textSize="20sp"
+            android:minWidth="0dp"
+            android:paddingHorizontal="12dp" />
+
+        <SeekBar
+            android:id="@+id/seekZoom"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="@color/white"
+            android:thumbTint="@color/white" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnZoomIn"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="＋"
+            android:textColor="@color/white"
+            android:textSize="20sp"
+            android:minWidth="0dp"
+            android:paddingHorizontal="12dp" />
+
+        <TextView
+            android:id="@+id/tvZoom"
+            android:layout_width="52dp"
+            android:layout_height="wrap_content"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:gravity="center"
+            tools:text="1.0x" />
+
+    </LinearLayout>
+
     <!-- Translucent bottom panel -->
     <LinearLayout
         android:id="@+id/bottomPanel"

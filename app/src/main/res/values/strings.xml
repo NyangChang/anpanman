@@ -18,6 +18,10 @@
     <!-- Map -->
     <string name="btn_map">🐱 地図を見る</string>
 
+    <!-- Camera controls -->
+    <string name="btn_flip_camera">切替</string>
+    <string name="zoom_label">%.1fx</string>
+
     <!-- Permission -->
     <string name="permission_denied">カメラ権限が必要です</string>
 </resources>

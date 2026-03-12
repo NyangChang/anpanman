@@ -1,6 +1,7 @@
 package com.example.studytimelapse.camera
 
 import android.content.Context
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -15,31 +16,24 @@ import java.util.concurrent.Executors
 /**
  * Thin wrapper around CameraX.
  *
- * Binds a [Preview] use case (for live viewfinder) and an [ImageAnalysis]
- * use case (for frame-by-frame processing).  The [ImageAnalysis] output is
- * intentionally exposed via a callback so the timelapse layer and any future
- * motion-detection layer can each subscribe independently.
- *
- * @param context        Application / activity context.
- * @param lifecycleOwner The lifecycle owner that controls camera lifetime.
- * @param previewView    Surface on which the live preview is rendered.
- * @param onFrame        Called on [analysisExecutor] for every frame delivered
- *                       by [ImageAnalysis].  Callers must close [ImageProxy]
- *                       when done.
+ * Supports front/back switching via [switchCamera] and linear zoom via [setLinearZoom].
+ * [onCameraReady] is called each time a camera is successfully bound, giving callers
+ * access to the new [Camera] instance (e.g. to observe ZoomState).
  */
 class CameraController(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
     private val previewView: PreviewView,
     private val onFrame: (ImageProxy) -> Unit,
+    private val onCameraReady: (Camera) -> Unit = {},
 ) {
 
-    /** Dedicated single-thread executor for image analysis. */
     val analysisExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
     private var cameraProvider: ProcessCameraProvider? = null
+    private var camera: Camera? = null
+    private var lensFacing = CameraSelector.LENS_FACING_BACK
 
-    /** Start camera and bind use cases.  Safe to call multiple times. */
     fun start() {
         val providerFuture = ProcessCameraProvider.getInstance(context)
         providerFuture.addListener({
@@ -48,14 +42,28 @@ class CameraController(
         }, ContextCompat.getMainExecutor(context))
     }
 
-    /** Unbind all use cases and release resources. */
     fun stop() {
         cameraProvider?.unbindAll()
         analysisExecutor.shutdown()
     }
 
-    // -------------------------------------------------------------------------
-    // Private helpers
+    /** Toggle between front and back camera. */
+    fun switchCamera() {
+        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
+            CameraSelector.LENS_FACING_FRONT
+        else
+            CameraSelector.LENS_FACING_BACK
+        cameraProvider?.let { bindUseCases(it) }
+    }
+
+    /**
+     * Set zoom as a linear fraction [0.0, 1.0].
+     * 0.0 = minimum zoom (widest), 1.0 = maximum zoom.
+     */
+    fun setLinearZoom(fraction: Float) {
+        camera?.cameraControl?.setLinearZoom(fraction.coerceIn(0f, 1f))
+    }
+
     // -------------------------------------------------------------------------
 
     private fun bindUseCases(provider: ProcessCameraProvider) {
@@ -64,7 +72,6 @@ class CameraController(
         }
 
         val imageAnalysis = ImageAnalysis.Builder()
-            // Keep only the latest frame; drop stale frames automatically.
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also { analysis ->
@@ -73,11 +80,14 @@ class CameraController(
                 }
             }
 
-        val selector = CameraSelector.DEFAULT_BACK_CAMERA
+        val selector = CameraSelector.Builder()
+            .requireLensFacing(lensFacing)
+            .build()
 
         try {
             provider.unbindAll()
-            provider.bindToLifecycle(lifecycleOwner, selector, preview, imageAnalysis)
+            camera = provider.bindToLifecycle(lifecycleOwner, selector, preview, imageAnalysis)
+            onCameraReady(camera!!)
         } catch (e: Exception) {
             e.printStackTrace()
         }
